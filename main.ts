@@ -7,7 +7,6 @@ const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN");
 
 if (!SECRET_PASSWORD || !ALLOWED_ORIGIN) {
     console.error("错误：请确保在Deno Deploy的项目设置中，正确配置了 SECRET_PASSWORD 和 ALLOWED_ORIGIN 环境变量。");
-    // 即使环境变量缺失，也让服务器启动，以便查看日志，但功能会受限
 }
 
 const app = new Application();
@@ -15,7 +14,7 @@ const router = new Router();
 const tasksFilePath = "./tasks.json";
 
 // --- 中间件配置 ---
-app.use(oakCors({ origin: ALLOWED_ORIGIN || "*" })); // 如果环境变量未设置，则临时允许所有来源
+app.use(oakCors({ origin: ALLOWED_ORIGIN || "*" }));
 
 // 密码验证中间件
 app.use(async (ctx, next) => {
@@ -36,7 +35,6 @@ app.use(async (ctx, next) => {
 });
 
 // --- API 路由 ---
-// (这部分代码没有变化)
 async function readTasks() {
     try {
         const data = await Deno.readTextFile(tasksFilePath);
@@ -89,14 +87,14 @@ router
 app.use(router.routes());
 app.use(router.allowedMethods());
 
-// --- 【关键改进】增加根路径健康检查响应 ---
+// --- 根路径健康检查响应 ---
 app.use(async (ctx) => {
     if (ctx.request.url.pathname === '/') {
         ctx.response.body = "August Orbit Backend is alive.";
     }
 });
 
-// --- 【关键改进】更明确的启动监听 ---
+// --- 明确的启动监听 ---
 const port = 8000;
 app.addEventListener("listen", ({ hostname, port, secure }) => {
     console.log(
@@ -104,58 +102,4 @@ app.addEventListener("listen", ({ hostname, port, secure }) => {
     );
 });
 
-await app.listen({ port });        ctx.response.status = 201;
-        ctx.response.body = newTask;
-    })
-    .put("/api/tasks/:id", async (ctx) => {
-        const tasks = await readTasks();
-        const updatedTaskData = await ctx.request.body({ type: "json" }).value;
-        const taskId = ctx.params.id;
-        
-        const index = tasks.findIndex(t => t.id === taskId);
-        if (index > -1) {
-            tasks[index] = { ...tasks[index], ...updatedTaskData };
-            await writeTasks(tasks);
-            ctx.response.body = tasks[index];
-        } else {
-            ctx.response.status = 404;
-            ctx.response.body = { message: "Task not found" };
-        }
-    })
-    .delete("/api/tasks/:id", async (ctx) => {
-        let tasks = await readTasks();
-        const taskId = ctx.params.id;
-        
-        const initialLength = tasks.length;
-        tasks = tasks.filter(t => t.id !== taskId);
-
-        if (tasks.length < initialLength) {
-            await writeTasks(tasks);
-            ctx.response.status = 204; // No Content
-        } else {
-            ctx.response.status = 404;
-            ctx.response.body = { message: "Task not found" };
-        }
-    });
-
-// CORS for allowing frontend access
-app.use(oakCors({ origin: "*" })); // IMPORTANT: Allows any domain to access.
-
-app.use(router.routes());
-app.use(router.allowedMethods());
-
-// Serve static frontend files
-app.use(async (ctx, next) => {
-    try {
-        await ctx.send({
-            root: `${Deno.cwd()}/`,
-            index: "index.html",
-        });
-    } catch {
-        await next();
-    }
-});
-
-
-console.log("Server running on http://localhost:8000");
-await app.listen({ port: 8000 });
+await app.listen({ port });
