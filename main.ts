@@ -47,7 +47,13 @@ async function readTasks() {
 async function writeTasks(tasks: any[]) {
     await Deno.writeTextFile(tasksFilePath, JSON.stringify(tasks, null, 2));
 }
+
+// 【【【 根本性修复：将健康检查直接加入路由器 】】】
 router
+    .get("/", (ctx) => {
+        ctx.response.status = 200;
+        ctx.response.body = "August Orbit Backend is alive and well.";
+    })
     .get("/api/tasks", async (ctx) => {
         ctx.response.body = await readTasks();
     })
@@ -86,13 +92,6 @@ router
 
 app.use(router.routes());
 app.use(router.allowedMethods());
-
-// --- 根路径健康检查响应 ---
-app.use(async (ctx) => {
-    if (ctx.request.url.pathname === '/') {
-        ctx.response.body = "August Orbit Backend is alive.";
-    }
-});
 
 // --- 明确的启动监听 ---
 const port = 8000;
