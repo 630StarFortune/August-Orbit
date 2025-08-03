@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>八月星尘 · August Stardust</title>
+    <meta name="description" content="记录每一粒微小的愿望与叹息，在无垠的八月夜空中，它们汇成闪烁的尘光。 ‖ Tracing the shimmer of every wish and whisper, a constellation of moments in the August night.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0d0d1a;
+            --card-bg: rgba(20, 20, 40, 0.7);
+            --text-color: #e0e0e0;
+            --primary-color: #a89ee6;
+            --gold-highlight: #ffd700;
+            --danger-color: #e68999;
+            --tag-bg: rgba(168, 158, 230, 0.15);
+            --tag-border: rgba(168, 158, 230, 0.4);
+            --font-serif: 'Noto Serif SC', serif;
+            --font-sans: 'Noto Sans SC', sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-sans);
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body.edit-mode .task-card { cursor: pointer; }
+        body:not(.edit-mode) .task-card { cursor: default; }
+        #star-animation-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+            overflow: hidden;
+        }
+        #nebula {
+            position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle at 20% 20%, rgba(168, 158, 230, 0.2), transparent 40%),
+                        radial-gradient(circle at 80% 70%, rgba(255, 215, 0, 0.1), transparent 50%);
+            animation: moveNebula 120s linear infinite;
+        }
+        @keyframes moveNebula {
+            0% { transform: rotate(0deg) scale(1.5); }
+            100% { transform: rotate(360deg) scale(1.5); }
+        }
+        .main-container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; position: relative; z-index: 1; height: 100vh; overflow-y: auto; }
+        header { text-align: center; margin-bottom: 1rem; animation: fadeInDown 1s ease-out; }
+        header h1 { font-family: var(--font-serif); font-size: 2.5rem; font-weight: 700; color: #fff; text-shadow: 0 0 10px var(--primary-color), 0 0 20px var(--primary-color); }
+        .top-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        #view-toggle, #status-indicator { font-size: 0.9rem; color: var(--text-color); opacity: 0.8; padding: 0.5rem 0.8rem; border-radius: 8px; background: var(--card-bg); border: 1px solid var(--tag-border); cursor: pointer; transition: all 0.3s; }
+        #view-toggle:hover, #status-indicator:hover { background: rgba(168, 158, 230, 0.2); }
+        body.edit-mode #status-indicator { color: var(--gold-highlight); border-color: var(--gold-highlight); }
+        #search-box { width: 100%; padding: 0.8rem 1rem; margin-bottom: 2rem; background: var(--card-bg); border: 1px solid var(--tag-border); border-radius: 8px; color: var(--text-color); font-size: 1rem; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        #task-list {
+            display: grid;
+            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            padding-bottom: 5rem;
+        }
+        #stellarium-view { display: none; position: relative; width: 100%; height: 1000px; }
+        .task-card, .note-card { background: var(--card-bg); border: 1px solid var(--tag-border); border-radius: 12px; padding: 1.5rem; backdrop-filter: blur(12px); transition: transform 0.3s ease, box-shadow 0.3s ease; animation: fadeInUp 0.5s ease-out forwards; opacity: 0; }
+        body:not(.edit-mode) .task-card:hover { animation: glow-effect 1.5s infinite alternate; }
+        .task-card.completed { border-left: 4px solid var(--gold-highlight); opacity: 0.7; }
+        .task-content {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            word-break: break-word;
+            font-size: 1.1rem;
+            line-height: 1.7;
+        }
+        /* 【【【 致命BUG修复：确保图片不会撑破卡片 】】】 */
+        .task-content img {
+            display: block; /* 修正图片底部的空白间隙 */
+            max-width: 100%; /* 核心：图片最大宽度为其容器的100% */
+            height: auto; /* 保持图片的原始宽高比 */
+            border-radius: 8px; /* 保持圆角美观 */
+            margin-top: 1rem; /* 与上方文字的间距 */
+        }
+        .tags-container { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .tag { background: var(--tag-bg); border: 1px solid var(--tag-border); color: var(--primary-color); padding: 0.25rem 0.6rem; border-radius: 12px; font-size: 0.8rem; cursor: pointer; transition: background-color 0.2s; }
+        .tag:hover { background: rgba(168, 158, 230, 0.3); }
+        .star-node { position: absolute; width: 12px; height: 12px; background: white; border-radius: 50%; box-shadow: 0 0 10px white, 0 0 20px var(--primary-color); cursor: pointer; transition: transform 0.3s; }
+        .star-node:hover { transform: scale(1.5); box-shadow: 0 0 15px white, 0 0 30px var(--gold-highlight); }
+        .star-node .star-label { display: none; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--card-bg); padding: 0.5rem; border-radius: 6px; font-size: 0.9rem; white-space: nowrap; }
+        .star-node:hover .star-label { display: block; }
+        .fab { position: fixed; bottom: 2rem; right: 2rem; width: 60px; height: 60px; border-radius: 50%; background-color: var(--primary-color); color: white; font-size: 2rem; border: none; cursor: pointer; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 15px rgba(168, 158, 230, 0.5); transition: all 0.3s ease; z-index: 100; }
+        body.edit-mode .fab { background-color: var(--gold-highlight); }
+        #modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 1000; transition: opacity 0.3s ease; }
+        #modal-backdrop.hidden { opacity: 0; pointer-events: none; }
+        #modal-content { background: var(--card-bg); border: 1px solid rgba(168, 158, 230, 0.2); padding: 2rem; border-radius: 15px; width: 90%; max-width: 500px; position: relative; transform: scale(0.95); transition: transform 0.3s ease; }
+        #modal-backdrop:not(.hidden) #modal-content { transform: scale(1); }
+        #modal-title { font-family: var(--font-serif); margin-bottom: 1.5rem; text-align: center; }
+        #modal-content textarea, #modal-content input[type="text"] { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(168, 158, 230, 0.3); border-radius: 8px; padding: 0.8rem; color: var(--text-color); font-family: var(--font-sans); font-size: 1rem; resize: vertical; margin-bottom: 1rem; min-height: 40px; }
+        #modal-content textarea { min-height: 120px; }
+        #modal-content input[type="text"] { height: 40px; }
+        .modal-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
+        .modal-actions select, .modal-actions button { padding: 0.7rem 1.2rem; border-radius: 8px; border: none; cursor: pointer; font-size: 1rem; transition: background-color 0.2s; }
+        .action-buttons { display: flex; gap: 0.5rem; }
+        .primary { background-color: var(--primary-color); color: white; }
+        .danger { background-color: var(--danger-color); color: white; }
+        .close-btn { position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--text-color); font-size: 2rem; cursor: pointer; opacity: 0.7; }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes glow-effect { from { box-shadow: 0 0 5px rgba(168, 158, 230, 0.2); transform: translateY(0); } to { box-shadow: 0 0 20px rgba(168, 158, 230, 0.5); transform: translateY(-5px); } }
+        @media (max-width: 600px) {
+            header h1 { font-size: 2rem; }
+            .task-card, .note-card { padding: 1rem; }
+            .task-content { font-size: 1rem; }
+            .modal-actions { flex-direction: column; gap: 1rem; align-items: stretch; }
+            .action-buttons { display: flex; justify-content: space-between; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div id="star-animation-container"><div id="nebula"></div></div>
+    <div class="main-container">
+        <header>
+            <h1>八月星尘 · August Stardust</h1>
+        </header>
+        <div class="top-controls">
+            <div id="view-toggle" title="切换视图">列表模式</div>
+            <div id="status-indicator" title="点击可退出天航者模式">访客模式</div>
+        </div>
+        <input type="text" id="search-box" placeholder="检索星尘或标签...">
+        <main id="task-list"></main>
+        <div id="stellarium-view"></div>
+        <footer>
+            <button id="add-task-btn" class="fab" title="进入天航者模式/创建新星辰">+</button>
+        </footer>
+    </div>
+    <div id="modal-backdrop" class="hidden">
+        <div id="modal-content">
+            <h2 id="modal-title">新的星辰</h2>
+            <textarea id="modal-text" placeholder="记录下这颗星辰的轨迹..."></textarea>
+            <input type="text" id="modal-tags" placeholder="添加标签，用逗号分隔 (例: #创作, #生活)">
+            <textarea id="modal-notes" placeholder="为它写下独一无二的星语..."></textarea>
+            <div class="modal-actions">
+                <select id="modal-status">
+                    <option value="pending">待办</option>
+                    <option value="completed">已完成</option>
+                </select>
+                <div class="action-buttons">
+                    <button id="delete-btn" class="danger">遗忘</button>
+                    <button id="save-btn" class="primary">封存</button>
+                </div>
+            </div>
+            <button id="close-modal-btn" class="close-btn">×</button>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const API_BASE_URL = 'https://august-orbit.stella-atelier.deno.net';
+            let isInEditMode = false;
+            let userPassword = null;
+            let allTasks = [];
+            let currentView = 'list';
+            const body = document.body;
+            const taskList = document.getElementById('task-list');
+            const stellariumView = document.getElementById('stellarium-view');
+            const addTaskBtn = document.getElementById('add-task-btn');
+            const statusIndicator = document.getElementById('status-indicator');
+            const viewToggle = document.getElementById('view-toggle');
+            const searchBox = document.getElementById('search-box');
+            const modalBackdrop = document.getElementById('modal-backdrop');
+            const modalContent = document.getElementById('modal-content');
+            const closeModalBtn = modalContent.querySelector('.close-btn');
+            const saveBtn = modalContent.querySelector('.primary');
+            const deleteBtn = modalContent.querySelector('.danger');
+            const modalTitle = document.getElementById('modal-title');
+            const modalText = document.getElementById('modal-text');
+            const modalTags = document.getElementById('modal-tags');
+            const modalNotes = document.getElementById('modal-notes');
+            const modalStatus = document.getElementById('modal-status');
+            let currentEditingTaskId = null;
+            const correctContent = (content) => content ? content.replace("感谢我的灵感", "感谢某人的灵感") : "";
+            const renderListView = (tasks) => {
+                taskList.innerHTML = '';
+                tasks.forEach((task, index) => {
+                    const card = document.createElement('div');
+                    const correctedContent = correctContent(task.content);
+                    if (task.type === 'note') {
+                        card.className = 'note-card';
+                        card.innerHTML = `<p class="task-content">${correctedContent}</p>`;
+                    } else {
+                        card.className = 'task-card';
+                        card.classList.toggle('completed', task.status === 'completed');
+                        card.dataset.id = task.id;
+                        let tagsHTML = '';
+                        if (task.tags && task.tags.length > 0) {
+                            tagsHTML = `<div class="tags-container">${task.tags.map(tag => `<span class="tag" title="筛选此标签">${tag}</span>`).join('')}</div>`;
+                        }
+                        let contentHTML = correctedContent.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/~~(.*?)~~/g, '<s>$1</s>').replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>').replace(/(https?:\/\/[^\s]+(\.jpeg|\.jpg|\.png|\.gif))/gi, '<img src="$1" alt="image" referrerpolicy="no-referrer">');
+                        card.innerHTML = `<div class="task-content">${contentHTML}</div>${tagsHTML}`;
+                        card.addEventListener('click', (e) => {
+                            if (e.target.classList.contains('tag')) {
+                                searchBox.value = e.target.textContent;
+                                searchBox.dispatchEvent(new Event('input'));
+                            } else if (isInEditMode) {
+                                openModal(task);
+                            }
+                        });
+                    }
+                    card.style.animationDelay = `${index * 0.05}s`;
+                    taskList.appendChild(card);
+                });
+            };
+            const renderStellariumView = (tasks) => {
+                stellariumView.innerHTML = '';
+                tasks.forEach(task => {
+                    if (task.type === 'note') return;
+                    const star = document.createElement('div');
+                    star.className = 'star-node';
+                    star.style.left = `${5 + Math.random() * 90}%`;
+                    star.style.top = `${5 + Math.random() * 90}%`;
+                    const correctedContent = correctContent(task.content);
+                    // 修复换行符处理
+                    star.innerHTML = `<div class="star-label">${correctedContent.split(/\r?\n/)[0]}</div>`;
+                    star.addEventListener('click', () => { if (isInEditMode) openModal(task); });
+                    stellariumView.appendChild(star);
+                });
+            };
+            const renderView = (tasks) => {
+                if (currentView === 'list') {
+                    stellariumView.style.display = 'none';
+                    taskList.style.display = 'grid';
+                    renderListView(tasks);
+                } else {
+                    taskList.style.display = 'none';
+                    stellariumView.style.display = 'block';
+                    stellariumView.style.minHeight = `${Math.max(window.innerHeight, tasks.length * 30) + 200}px`;
+                    renderStellariumView(tasks);
+                }
+            };
+            // --- 修复后的 fetchTasks 函数 ---
+            const fetchTasks = async () => {
+                console.log("[DEBUG] fetchTasks function called.");
+                // 在函数作用域顶部声明 timeoutId，并初始化为 null
+                let timeoutId = null;
+                try {
+                    // 1. Clear previous content and show loading
+                    taskList.innerHTML = '<p style="text-align:center;">正在连接星轨...</p>';
+                    stellariumView.innerHTML = '<p style="text-align:center;">正在连接星轨...</p>';
+                    console.log("[DEBUG] Displayed loading message.");
+
+                    console.log("[DEBUG] About to fetch from:", `${API_BASE_URL}/api/tasks`);
+                    
+                    // --- 关键：添加超时和详细日志 ---
+                    const controller = new AbortController();
+                    // 使用 setTimeout 并将返回的 ID 赋值给之前声明的 timeoutId 变量
+                    timeoutId = setTimeout(() => {
+                        console.error("[ERROR] Fetch request to /api/tasks timed out after 10 seconds.");
+                        controller.abort();
+                    }, 10000); // 10秒超时
+
+                    const response = await fetch(`${API_BASE_URL}/api/tasks`, {
+                        method: 'GET',
+                        //credentials: 'include', // 如果需要携带 Cookie (通常 CORS 不需要)
+                        signal: controller.signal // 添加超时信号
+                    });
+
+                    // 请求成功返回后，清除超时计时器
+                    if (timeoutId) {
+                        clearTimeout(timeoutId);
+                        console.log("[DEBUG] Fetch timeout cleared (request finished).");
+                    }
+                    console.log("[DEBUG] Fetch request sent. Response received.");
+
+                    console.log("[DEBUG] Response Status:", response.status);
+                    console.log("[DEBUG] Response Status Text:", response.statusText);
+                    // 尝试读取响应头
+                    console.log("[DEBUG] Response Headers:", [...response.headers.entries()]);
+
+                    if (!response.ok) {
+                        const errorText = await response.text(); // 尝试获取错误详情
+                        console.error(`[ERROR] Fetch not ok. Status: ${response.status}, StatusText: ${response.statusText}, Body:`, errorText);
+                        throw new Error(`HTTP Error ${response.status}: ${response.statusText}. Details: ${errorText}`);
+                    }
+
+                    console.log("[DEBUG] Response is OK. Parsing JSON...");
+                    allTasks = await response.json();
+                    console.log("[DEBUG] JSON parsed successfully. Tasks received:", allTasks);
+
+                    // 成功获取数据后渲染
+                    renderView(allTasks);
+                    console.log("[DEBUG] renderView called after successful fetch.");
+
+                } catch (error) {
+                    // 确保在任何错误情况下都清除超时计时器
+                    if (timeoutId) {
+                        clearTimeout(timeoutId);
+                        console.log("[DEBUG] Fetch timeout cleared (due to error).");
+                    }
+                    console.error("[ERROR] Error inside fetchTasks catch block:", error);
+
+                    let userFriendlyMessage = "星轨连接失败。";
+                    // 检查是否是超时错误
+                    if (error.name === 'AbortError') {
+                         userFriendlyMessage += " 请求超时或被中止。";
+                         console.error("[ERROR] Fetch was aborted (likely timeout).");
+                    } else if (error instanceof TypeError) {
+                        // 这通常表示网络问题（DNS失败，连接被拒等）或 CORS 错误
+                        userFriendlyMessage += " 网络错误或跨域问题。请检查后端地址和 CORS 设置。";
+                        console.error("[ERROR] TypeError during fetch (likely network/CORS):", error.message);
+                    } else {
+                        userFriendlyMessage += ` ${error.message}`;
+                    }
+
+                    const errorMsg = `<p style="text-align:center; color: var(--danger-color);">${userFriendlyMessage}</p>`;
+                    taskList.innerHTML = errorMsg;
+                    stellariumView.innerHTML = errorMsg;
+                    console.log("[DEBUG] Displayed error message to user.");
+                }
+                console.log("[DEBUG] fetchTasks function finished (either success or error).");
+            };
+            // --- fetchTasks 函数结束 ---
+            const openModal = (task = null) => {
+                currentEditingTaskId = task ? task.id : null;
+                if (task) {
+                    modalTitle.textContent = '编辑星辰';
+                    modalText.value = correctContent(task.content);
+                    modalTags.value = task.tags ? task.tags.join(', ') : '';
+                    modalNotes.value = task.notes || '';
+                    modalStatus.value = task.status;
+                    deleteBtn.style.display = 'inline-block';
+                } else {
+                    modalTitle.textContent = '新的星辰';
+                    modalText.value = ''; modalTags.value = ''; modalNotes.value = ''; modalStatus.value = 'pending';
+                    deleteBtn.style.display = 'none';
+                }
+                modalBackdrop.classList.remove('hidden');
+            };
+            const closeModal = () => { modalBackdrop.classList.add('hidden'); };
+            const toggleEditMode = (state, fromSession = false) => {
+                isInEditMode = state;
+                body.classList.toggle('edit-mode', state);
+                if (state) {
+                    statusIndicator.textContent = '天航者模式';
+                    addTaskBtn.title = '创建新星辰';
+                    if (!fromSession) alert('欢迎回来，天航者。');
+                } else {
+                    statusIndicator.textContent = '访客模式';
+                    addTaskBtn.title = '进入天航者模式';
+                    userPassword = null;
+                    sessionStorage.removeItem('stardust-password');
+                }
+            };
+            statusIndicator.addEventListener('click', () => {
+                if (isInEditMode && confirm('要退出天航者模式吗？')) { toggleEditMode(false); }
+            });
+            viewToggle.addEventListener('click', () => {
+                currentView = currentView === 'list' ? 'stellarium' : 'list';
+                viewToggle.textContent = currentView === 'list' ? '列表模式' : '星图模式';
+                searchBox.value = '';
+                renderView(allTasks);
+            });
+            addTaskBtn.addEventListener('click', () => {
+                if (isInEditMode) { openModal(null); }
+                else {
+                    const password = prompt('请输入你的星语口令：');
+                    if (password) {
+                        userPassword = password;
+                        sessionStorage.setItem('stardust-password', password);
+                        toggleEditMode(true);
+                    }
+                }
+            });
+            searchBox.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const filteredTasks = allTasks.filter(task =>
+                    (task.content && correctContent(task.content).toLowerCase().includes(searchTerm)) ||
+                    (task.tags && task.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
+                );
+                renderView(filteredTasks);
+            });
+            const checkSession = () => {
+                const storedPassword = sessionStorage.getItem('stardust-password');
+                if (storedPassword) { userPassword = storedPassword; toggleEditMode(true, true); }
+            };
+            const saveTask = async () => {
+                if (!userPassword) { alert('口令不存在，请重新进入天航者模式。'); return; }
+                const tags = modalTags.value.split(',').map(t => t.trim().replace(/^#/, '')).filter(t => t);
+                const taskData = { content: modalText.value, notes: modalNotes.value, status: modalStatus.value, tags };
+                try {
+                    const headers = { 'Content-Type': 'application/json', 'Authorization': userPassword };
+                    const url = currentEditingTaskId ? `${API_BASE_URL}/api/tasks/${currentEditingTaskId}` : `${API_BASE_URL}/api/tasks`;
+                    const method = currentEditingTaskId ? 'PUT' : 'POST';
+                    const response = await fetch(url, { method, headers, body: JSON.stringify(taskData) });
+                    if (response.status === 401) { alert('星语口令错误！将退出天航者模式。'); toggleEditMode(false); return; }
+                    if (!response.ok) throw new Error('封存失败');
+                    closeModal(); fetchTasks();
+                } catch (error) { alert(`封存失败: ${error.message}`); }
+            };
+            const deleteTask = async () => {
+                if (!currentEditingTaskId || !confirm('确定要遗忘这颗星辰吗？这个操作无法撤销。')) return;
+                if (!userPassword) { alert('口令不存在，请重新进入天航者模式。'); return; }
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/tasks/${currentEditingTaskId}`, { method: 'DELETE', headers: { 'Authorization': userPassword } });
+                    if (response.status === 401) { alert('星语口令错误！将退出天航者模式。'); toggleEditMode(false); return; }
+                    if (response.status !== 204) throw new Error('遗忘失败');
+                    closeModal(); fetchTasks();
+                } catch (error) { alert(`遗忘失败: ${error.message}`); }
+            };
+            // 星星动画代码保持不变
+            const starContainer = document.getElementById('star-animation-container');
+            for (let i = 0; i < 150; i++) {
+                const star = document.createElement('div');
+                star.style.position = 'absolute';
+                const size = Math.random() * 2 + 1;
+                star.style.width = `${size}px`; star.style.height = `${size}px`;
+                star.style.backgroundColor = 'white'; star.style.borderRadius = '50%';
+                star.style.top = `${Math.random() * 100}%`; star.style.left = `${Math.random() * 100}%`;
+                const duration = Math.random() * 5 + 5;
+                star.style.animation = `twinkle ${duration}s infinite alternate`;
+                star.style.animationDelay = `${Math.random() * duration}s`;
+                starContainer.appendChild(star);
+            }
+            const keyframes = `@keyframes twinkle { from { opacity: ${Math.random() * 0.3}; } to { opacity: ${Math.random() * 0.7 + 0.3}; } }`;
+            const styleSheet = document.createElement("style");
+            styleSheet.innerText = keyframes;
+            document.head.appendChild(styleSheet);
+            // 事件监听器保持不变
+            closeModalBtn.addEventListener('click', closeModal);
+            modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
+            saveBtn.addEventListener('click', saveTask);
+            deleteBtn.addEventListener('click', deleteTask);
+            // --- 关键：确保这两个函数被调用 ---
+            checkSession();
+            fetchTasks(); // 确保 fetchTasks 被调用
+        });
+    </script>
+</body>
+</html>
