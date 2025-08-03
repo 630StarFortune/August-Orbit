@@ -1,10 +1,16 @@
 // Project: 八月星尘 · August Stardust
-// Backend Main File - Scout & Diagnostic Version
-// Purpose: To identify the exact Origin header sent by the Websim editor.
+// Backend Main File - Final Battle Version with Smart CORS
+// This version intelligently handles Websim's dynamic sandbox origins.
 
 const SECRET_PASSWORD = Deno.env.get("SECRET_PASSWORD");
-// We are temporarily ignoring ALLOWED_ORIGIN for diagnostics.
 const tasksFilePath = "./tasks.json";
+
+// 【【【 智能门卫核心 】】】
+// 这是我们允许进入的两个“家族”
+const allowedOrigins = [
+    'https://august-stardust--disstella.on.websim.com', // 你的“美术馆” (生产环境)
+    '.c.websim.com'                                     // 你的“工作室” (开发环境的家族标记)
+];
 
 async function readTasks() {
     try {
@@ -25,13 +31,20 @@ function createResponse(body: any, status: number = 200, headers: Headers): Resp
 }
 
 Deno.serve(async (req: Request) => {
-    // 【【【 侦察兵核心：摄像头已安装 】】】
-    const origin = req.headers.get("Origin");
-    console.log(`Incoming request from Origin: ${origin}`); // 这会把来访者身份打印在日志里
+    const requestOrigin = req.headers.get("Origin");
+    let allowedOrigin = null;
 
-    // 【【【 侦察兵核心：临时打开所有门禁 】】】
+    // 智能门卫的判断逻辑
+    if (requestOrigin) {
+        if (allowedOrigins.includes(requestOrigin)) {
+            allowedOrigin = requestOrigin; // 精确匹配“美术馆”
+        } else if (requestOrigin.endsWith(allowedOrigins[1])) {
+            allowedOrigin = requestOrigin; // 模糊匹配所有“工作室”
+        }
+    }
+    
     const corsHeaders = new Headers({
-        "Access-Control-Allow-Origin": "*", // Temporarily allow all
+        "Access-Control-Allow-Origin": allowedOrigin || allowedOrigins[0], // 如果没有匹配，默认允许“美术馆”
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization",
     });
@@ -52,7 +65,6 @@ Deno.serve(async (req: Request) => {
         return createResponse(tasks, 200, corsHeaders);
     }
 
-    // For protected routes
     if (req.headers.get("Authorization") !== SECRET_PASSWORD) {
         return createResponse({ message: "星语口令错误" }, 401, corsHeaders);
     }
@@ -91,3 +103,5 @@ Deno.serve(async (req: Request) => {
 
     return createResponse({ message: "Not Found" }, 404, corsHeaders);
 });
+
+console.log(`Backend server setup complete with smart CORS. Listening for requests...`);
