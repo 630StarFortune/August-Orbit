@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>八月星轨</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="star-animation-container"></div>
+    <div class="main-container">
+        <header>
+            <h1>八月星轨</h1>
+            <p class="subtitle">Stella's August Orbit</p>
+        </header>
+        <main id="task-list">
+            <!-- 星辰任务将由JS动态加载于此 -->
+        </main>
+        <footer>
+            <button id="add-task-btn" class="fab">+</button>
+        </footer>
+    </div>
+
+    <div id="modal-backdrop" class="hidden">
+        <div id="modal-content">
+            <h2 id="modal-title">新的星辰</h2>
+            <textarea id="modal-text" placeholder="记录下这颗星辰的轨迹..."></textarea>
+            <textarea id="modal-notes" placeholder="为它写下独一无二的星语... (完成后的感想、链接等)"></textarea>
+            <div class="modal-actions">
+                <select id="modal-status">
+                    <option value="pending">待办</option>
+                    <option value="completed">已完成</option>
+                </select>
+                <div class="action-buttons">
+                    <button id="delete-btn" class="danger">遗忘</button>
+                    <button id="save-btn" class="primary">封存</button>
+                </div>
+            </div>
+            <button id="close-modal-btn" class="close-btn">×</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
