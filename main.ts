@@ -1,15 +1,61 @@
 // Project: 八月星尘 · August Stardust
-// Backend Main File - Post-Migration Final Version with Enhanced Robustness
-// This version uses Deno KV for persistence and includes improved error handling and logging.
+// Backend Main File - Post-Migration Final Version with Enhanced Robustness and Updated CORS
+// This version uses Deno KV for persistence and includes improved error handling, logging, and CORRECT CORS setup.
 
 const SECRET_PASSWORD = Deno.env.get("SECRET_PASSWORD");
 // const tasksFilePath = "./tasks.json"; // 已移除，不再需要文件存储
 
-// 【【【 CORS 配置 】】】
+// 【【【 更新的 CORS 配置 - 明确允许前端域名 】】】
+// 明确列出所有允许访问后端 API 的前端域名
 const allowedOrigins = [
-    'https://august-stardust--disstella.on.websim.com', // 生产环境
-    '.c.websim.com'                                     // 开发环境 (子域匹配)
+    'https://august-stardust--disstella.on.websim.com', // WebSim 托管的地址 (如果还需要)
+    'https://630starfortune.github.io',                 // 你的 GitHub Pages 用户域名 (关键!)
+    // 如果你的 GH Pages URL 是 https://630starfortune.github.io/August-Orbit/ 也加上
+    // 'https://630starfortune.github.io/August-Orbit', 
+    '.c.websim.com'                                     // WebSim 开发环境 (子域匹配)
 ];
+
+// --- 改进的 CORS 处理函数 ---
+function handleCors(req: Request): Headers {
+    const requestOrigin = req.headers.get("Origin");
+    let allowedOrigin = null;
+
+    // console.log(`[CORS] Incoming request Origin: ${requestOrigin}`); // 调试日志
+
+    if (requestOrigin) {
+        // 检查是否在明确允许的列表中 (精确匹配)
+        if (allowedOrigins.includes(requestOrigin)) {
+            allowedOrigin = requestOrigin;
+        }
+        // 检查是否匹配 GitHub Pages 用户域名
+        else if (requestOrigin === 'https://630starfortune.github.io') {
+             allowedOrigin = requestOrigin;
+        }
+        // 检查是否匹配 WebSim 开发环境 (子域)
+        else if (requestOrigin.endsWith('.c.websim.com')) {
+             allowedOrigin = requestOrigin;
+        }
+        // 如果你的 GH Pages 项目 URL 也需要支持，可以添加更宽松的检查
+        // else if (requestOrigin.startsWith('https://630starfortune.github.io')) {
+        //      allowedOrigin = 'https://630starfortune.github.io'; // 或 requestOrigin
+        // }
+    }
+
+    // console.log(`[CORS] Allowed Origin for response: ${allowedOrigin}`); // 调试日志
+
+    const corsHeaders = new Headers();
+    // 【【【 关键修正：只有在匹配到允许的源时，才设置 ACAO 头 】】】
+    if (allowedOrigin) {
+        corsHeaders.set("Access-Control-Allow-Origin", allowedOrigin);
+    }
+    corsHeaders.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    corsHeaders.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    // 可选：如果前端需要携带凭证 (如 Cookies)，需要设置此项，同时 ACAO 不能是 '*'
+    // corsHeaders.set("Access-Control-Allow-Credentials", "true");
+    return corsHeaders;
+}
+// --- CORS 处理函数结束 ---
+
 
 // --- Deno KV 可用性检查 (启动时) ---
 console.log("🔍 Checking Deno KV availability at startup...");
@@ -110,35 +156,6 @@ function createResponse(body: any, status: number = 200, extraHeaders: Record<st
     // headers.set("Cache-Control", "no-store"); // API 通常不缓存，或由具体路由设置
     return new Response(JSON.stringify(body), { status, headers });
 }
-
-// --- CORS 处理函数 ---
-function handleCors(req: Request): Headers {
-    const requestOrigin = req.headers.get("Origin");
-    let allowedOrigin = null;
-
-    if (requestOrigin) {
-        if (allowedOrigins.includes(requestOrigin)) {
-            allowedOrigin = requestOrigin;
-        } else if (allowedOrigins.some(origin => origin.startsWith('.') && requestOrigin.endsWith(origin))) {
-             // 更健壮的子域匹配 (例如 '.c.websim.com' 匹配 'xxx.c.websim.com')
-            allowedOrigin = requestOrigin;
-        }
-    }
-    // 如果没有匹配的 Origin，不设置 ACAO 头，让浏览器阻止请求（更安全）
-    // 如果需要默认允许生产环境，可以取消下面一行的注释
-    // allowedOrigin = allowedOrigin || allowedOrigins[0]; 
-
-    const corsHeaders = new Headers();
-    if (allowedOrigin) {
-        corsHeaders.set("Access-Control-Allow-Origin", allowedOrigin);
-    }
-    corsHeaders.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    corsHeaders.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    // 【【【 功能升级：添加 credentials 支持（如果需要）】】】
-    // corsHeaders.set("Access-Control-Allow-Credentials", "true"); 
-    return corsHeaders;
-}
-
 
 // --- 主服务逻辑 ---
 Deno.serve(async (req: Request) => {
