@@ -1,18 +1,11 @@
 // Project: 八月星尘 · August Stardust
-// Backend Main File - Back to Basics Final Version
-// This version uses the native Deno.serve for maximum stability on Deno Deploy.
+// Backend Main File - Scout & Diagnostic Version
+// Purpose: To identify the exact Origin header sent by the Websim editor.
 
-// --- 安全核心：从环境变量读取机密信息 ---
 const SECRET_PASSWORD = Deno.env.get("SECRET_PASSWORD");
-const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN");
-
-if (!SECRET_PASSWORD || !ALLOWED_ORIGIN) {
-    console.error("错误：请确保在Deno Deploy的项目设置中，正确配置了 SECRET_PASSWORD 和 ALLOWED_ORIGIN 环境变量。");
-}
-
+// We are temporarily ignoring ALLOWED_ORIGIN for diagnostics.
 const tasksFilePath = "./tasks.json";
 
-// --- 辅助函数 (无变化) ---
 async function readTasks() {
     try {
         const data = await Deno.readTextFile(tasksFilePath);
@@ -26,69 +19,58 @@ async function writeTasks(tasks: any[]) {
     await Deno.writeTextFile(tasksFilePath, JSON.stringify(tasks, null, 2));
 }
 
-// --- 创建响应的辅助函数 (包含CORS头) ---
-function createResponse(body: any, status: number = 200): Response {
-    const headers = new Headers({
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": ALLOWED_ORIGIN || "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    });
+function createResponse(body: any, status: number = 200, headers: Headers): Response {
+    headers.set("Content-Type", "application/json");
     return new Response(JSON.stringify(body), { status, headers });
 }
 
-// --- 【核心改造】使用原生 Deno.serve ---
 Deno.serve(async (req: Request) => {
+    // 【【【 侦察兵核心：摄像头已安装 】】】
+    const origin = req.headers.get("Origin");
+    console.log(`Incoming request from Origin: ${origin}`); // 这会把来访者身份打印在日志里
+
+    // 【【【 侦察兵核心：临时打开所有门禁 】】】
+    const corsHeaders = new Headers({
+        "Access-Control-Allow-Origin": "*", // Temporarily allow all
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    });
+
+    if (req.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
     const url = new URL(req.url);
     const path = url.pathname;
 
-    // --- 【重要】处理浏览器预检请求 (Preflight OPTIONS request) ---
-    if (req.method === "OPTIONS") {
-        return new Response(null, {
-            status: 204, // No Content
-            headers: {
-                "Access-Control-Allow-Origin": ALLOWED_ORIGIN || "*",
-                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            },
-        });
-    }
-
-    // --- 手动路由 ---
-    // 1. 健康检查
     if (path === "/" && req.method === "GET") {
-        return new Response("August Stardust Backend is alive and well.", { status: 200 });
+        return new Response("August Stardust Backend is alive and well.", { status: 200, headers: corsHeaders });
     }
 
-    // 2. 获取所有任务
     if (path === "/api/tasks" && req.method === "GET") {
         const tasks = await readTasks();
-        return createResponse(tasks);
+        return createResponse(tasks, 200, corsHeaders);
     }
 
-    // 3. 创建新任务
+    // For protected routes
+    if (req.headers.get("Authorization") !== SECRET_PASSWORD) {
+        return createResponse({ message: "星语口令错误" }, 401, corsHeaders);
+    }
+
     if (path === "/api/tasks" && req.method === "POST") {
-        if (req.headers.get("Authorization") !== SECRET_PASSWORD) {
-            return createResponse({ message: "星语口令错误" }, 401);
-        }
         const tasks = await readTasks();
         const newTask = await req.json();
         newTask.id = Date.now().toString();
         tasks.push(newTask);
         await writeTasks(tasks);
-        return createResponse(newTask, 201);
+        return createResponse(newTask, 201, corsHeaders);
     }
     
-    // 4. 更新和删除任务 (使用URLPattern匹配带ID的路径)
     const taskPattern = new URLPattern({ pathname: "/api/tasks/:id" });
     const match = taskPattern.exec(url);
 
     if (match) {
         const id = match.pathname.groups.id;
-        if (req.headers.get("Authorization") !== SECRET_PASSWORD) {
-            return createResponse({ message: "星语口令错误" }, 401);
-        }
-
         if (req.method === "PUT") {
             const tasks = await readTasks();
             const updatedTaskData = await req.json();
@@ -96,23 +78,16 @@ Deno.serve(async (req: Request) => {
             if (index > -1) {
                 tasks[index] = { ...tasks[index], ...updatedTaskData };
                 await writeTasks(tasks);
-                return createResponse(tasks[index]);
+                return createResponse(tasks[index], 200, corsHeaders);
             }
         }
-
         if (req.method === "DELETE") {
             let tasks = await readTasks();
-            const initialLength = tasks.length;
             tasks = tasks.filter(t => t.id !== id);
-            if (tasks.length < initialLength) {
-                await writeTasks(tasks);
-                return new Response(null, { status: 204, headers: { "Access-Control-Allow-Origin": ALLOWED_ORIGIN || "*" } });
-            }
+            await writeTasks(tasks);
+            return new Response(null, { status: 204, headers: corsHeaders });
         }
     }
 
-    // 如果所有路由都未匹配，返回404
-    return createResponse({ message: "Not Found" }, 404);
+    return createResponse({ message: "Not Found" }, 404, corsHeaders);
 });
-
-console.log(`Backend server setup complete. Listening for requests...`);
