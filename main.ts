@@ -1,6 +1,23 @@
-// Project: 八月星尘 · August Stardust
-// Backend Main File - Final Battle Version with Smart CORS
-// This version intelligently handles Websim's dynamic sandbox origins.
+// === Deno KV Availability Check (可选) ===
+console.log("🔍 Checking Deno KV availability...");
+try {
+  const testKv = await Deno.openKv();
+  console.log("✅ Deno KV is available.");
+  // Simple test write/read
+  const testKey = ["__kv_test__"];
+  const testValue = { status: "ok", timestamp: new Date().toISOString() };
+  await testKv.set(testKey, testValue);
+  const result = await testKv.get(testKey);
+  console.log("📝 KV Test Read Result:", result.value);
+  await testKv.delete(testKey); // Clean up test data
+  testKv.close();
+  console.log("🏁 Deno KV check completed successfully.");
+} catch (err) {
+  console.error("❌ Error accessing Deno KV:", err.message);
+  // Depending on your setup, you might want to exit here if KV is critical
+  // Deno.exit(1); 
+}
+// === End Deno KV Check ===
 
 const SECRET_PASSWORD = Deno.env.get("SECRET_PASSWORD");
 const tasksFilePath = "./tasks.json";
