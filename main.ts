@@ -147,6 +147,213 @@ Deno.serve(async (req: Request) => {
         return new Response("August Stardust Backend is alive and well.", { status: 200, headers: corsHeaders });
     }
 
+    // === 一次性数据恢复端点 - 仅用于恢复数据 ===
+    // 【【【 警告：这是一个危险的端点，任何人都能调用它来覆盖你的 KV 数据！！！】】】
+    // 【【【 部署后，立即在浏览器中访问一次 https://你的后端地址/api/restore-data 】】】
+    // 【【【 然后，立刻从此代码中删除这段代码并重新部署！！！】】】
+    if (path === "/api/restore-data" && req.method === "POST") {
+      try {
+        console.log("🚨 数据恢复端点被调用!");
+
+        // 1. 【【【在此处粘贴你的 tasks.json 文件的完整内容】】】
+        const tasksFromJson: any[] = [
+          {
+            "id": "1721548801001",
+            "content": "完成 蔡徐坤生日曲",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801002",
+            "content": "完成 八一主题文章，音乐",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801003",
+            "content": "731推文宣发",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801004",
+            "content": "看电影院偷拍的盗版南京照相馆",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801005",
+            "content": "完成《十七岁的雨季》纯音乐创作(明明只需要我一句话 但还是不愿意为难他们)",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801006",
+            "content": "完成 《明镜集》1%",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801007",
+            "content": "我没想到",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801008",
+            "content": "处理一下QQ信息",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801009",
+            "content": "攒钱 买朵莉亚新皮肤!",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801010",
+            "content": "明天要把我的苹果十一寄回我的好姐姐家 过年才能再见面啦 无限暖暖 以后不能宠爱你了",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801011",
+            "content": "今天倒数第二次治牙 痛痛(这里想不到说啥了)",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801012",
+            "content": "给白师傅持续投稿",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801013",
+            "content": "给我的忠实小读者持续写系列文章",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801014",
+            "content": "~~心跳瀑布上线~~\nhttps://linux.do/uploads/default/original/4X/0/7/6/07625e01d64cf3cd3bb9021c12b6e1e06a7ab0be.jpeg  \n会玩梗的 爱如火，恨如冰，上如线\n腾讯审核越来越快了 祝愿你永远愿意施舍哪怕1%的资本\n造福世界",
+            "status": "completed",
+            "notes": "这是一个已完成的示例，展示了删除线和链接的效果。"
+          },
+          {
+            "id": "1721548801015",
+            "content": "写告别帖(我不会写，到时候水一下就算了)",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801016",
+            "content": "晚安 梦里 有你有我\n\n> 我不做梦 也不记梦",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "note-1",
+            "type": "note",
+            "content": "感谢某人的提醒，这里也更新一下"
+          },
+          {
+            "id": "1721548801017",
+            "content": "研究几个kimi提示词",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801018",
+            "content": "没有2",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "note-2",
+            "type": "note",
+            "content": "感谢我的灵感，这里再更新一下" // 注意：前端 JS 会将 "感谢我的灵感" 替换为 "感谢某人的灵感"
+          },
+          {
+            "id": "1721548801019",
+            "content": "真正直面虚无 或者 reality",
+            "status": "pending",
+            "notes": ""
+          },
+          {
+            "id": "1721548801020",
+            "content": "没有2",
+            "status": "pending",
+            "notes": ""
+          }
+        ]; // <--- 粘贴你的 JSON 数组内容到这里
+
+        if (!Array.isArray(tasksFromJson)) {
+           console.error("❌ 提供的数据不是有效的 JSON 数组。");
+           return createResponse({ message: "Invalid data format. Must be a JSON array." }, 400, corsHeaders);
+        }
+
+        console.log(`📥 接收到 ${tasksFromJson.length} 个任务用于恢复。`);
+
+        // 2. 连接到 Deno KV
+        const kv = await Deno.openKv();
+        console.log("🔗 已连接到 Deno KV。");
+
+        // 3. 准备原子操作 (先清空，再写入)
+        const atomic = kv.atomic();
+        
+        // 3a. 删除所有现有任务 (清空)
+        console.log("🗑️  正在清空现有的 KV 任务数据...");
+        const oldTasksIter = kv.list({ prefix: ["tasks"] });
+        let deleteCount = 0;
+        for await (const res of oldTasksIter) {
+            atomic.delete(res.key);
+            deleteCount++;
+        }
+        console.log(`🗑️  计划删除 ${deleteCount} 个旧任务。`);
+
+        // 3b. 添加所有从 JSON 恢复的任务
+        console.log("➕ 正在准备添加恢复的任务...");
+        let successCount = 0;
+        let skippedCount = 0;
+        for (const task of tasksFromJson) {
+            if (!task.id) {
+                console.warn(`⚠️ 任务缺少 ID，跳过:`, JSON.stringify(task));
+                skippedCount++;
+                continue;
+            }
+            console.log(`➕ 正在添加任务 ID: ${task.id}`);
+            atomic.set(["tasks", task.id], task);
+            successCount++;
+        }
+
+        // 4. 提交原子操作
+        console.log(`📤 正在提交操作: 删除 ${deleteCount}, 添加 ${successCount}, 跳过 ${skippedCount}...`);
+        const res = await atomic.commit();
+        kv.close(); // 关闭连接
+
+        if (res.ok) {
+            console.log("✅ 数据恢复成功完成!");
+            return createResponse({ 
+                message: "Data restore successful!", 
+                restored: successCount, 
+                skipped: skippedCount,
+                deleted: deleteCount
+            }, 200, corsHeaders);
+        } else {
+            console.error("❌ 恢复过程中的原子操作失败。");
+            return createResponse({ message: "Atomic commit failed during data restore." }, 500, corsHeaders);
+        }
+
+      } catch (err) {
+        console.error("💥 数据恢复过程中发生错误:", err);
+        return createResponse({ message: `Restore error: ${err.message}` }, 500, corsHeaders);
+      }
+    }
+    // === 数据恢复端点结束 ===
+
+
     // --- GET /api/tasks (访客模式可访问) ---
     if (path === "/api/tasks" && req.method === "GET") {
         const tasks = await readTasks();
