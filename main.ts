@@ -1,3 +1,5 @@
+// Project: 八月星尘 · August Stardust
+// Backend Main File - Final Guardian Version
 import { Application, Router, Status } from "https://deno.land/x/oak@v12.6.1/mod.ts";
 import { oakCors } from "https://deno.land/x/cors@v1.2.2/mod.ts";
 
@@ -48,11 +50,11 @@ async function writeTasks(tasks: any[]) {
     await Deno.writeTextFile(tasksFilePath, JSON.stringify(tasks, null, 2));
 }
 
-// 【【【 根本性修复：将健康检查直接加入路由器 】】】
+// 【【【 根本性修复：将健康检查直接加入路由器，确保Warm Up成功 】】】
 router
     .get("/", (ctx) => {
         ctx.response.status = 200;
-        ctx.response.body = "August Orbit Backend is alive and well.";
+        ctx.response.body = "August Stardust Backend is alive and well.";
     })
     .get("/api/tasks", async (ctx) => {
         ctx.response.body = await readTasks();
